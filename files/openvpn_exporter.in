@@ -1,0 +1,58 @@
+#!/bin/sh
+# 
+# $FreeBSD$
+
+# PROVIDE: openvpn_exporter
+# REQUIRE: LOGIN
+# KEYWORD: shutdown
+#
+# Add the following lines to /etc/rc.conf.local or /etc/rc.conf
+# to enable this service:
+#
+# openvpn_exporter_enable (bool):	Set to NO by default
+#							Set it to YES to enable openvpn_exporter
+# openvpn_exporter_user (string):	Set user to run openvpn_exporter
+#							Default is "%%USERS%%"
+# openvpn_exporter_group (string):	Set group to run openvpn_exporter
+#							Default is "%%GROUPS%%"
+# openvpn_exporter_log_file (string):	Set file that openvpn_exporter will log to
+#							Default is "/var/log/openvpn_exporter.log"
+# openvpn_exporter_bind (string): 	Set address to listen on
+#							Default is :9167
+# openvpn_exporter_args (string):	Set additional command line arguments
+#							Default is ""
+
+. /etc/rc.subr
+
+name=openvpn_exporter
+rcvar=openvpn_exporter_enable
+
+load_rc_config $name
+
+: ${openvpn_exporter_enable:=NO}
+: ${openvpn_exporter_user:=nobody}
+: ${openvpn_exporter_group:=nobody}
+: ${openvpn_exporter_log_file=/var/log/openvpn_exporter.log}
+: ${openvpn_exporter_bind=:9176}
+: ${openvpn_exporter_status_paths=/var/log/openvpn/openvpn-status.log}
+
+command=/usr/sbin/daemon
+procname="%%PREFIX%%/bin/openvpn_exporter"
+command_args="-p ${pidfile} /usr/bin/env ${procname} \
+				-web.listen-address ${openvpn_exporter_bind} \
+				-openvpn.status_paths ${openvpn_exporter_status_paths} \
+				${openvpn_exporter_args} > ${openvpn_exporter_log_file}	2>&1"
+
+start_precmd=openvpn_exporter_startprecmd
+
+openvpn_exporter_startprecmd()
+{
+        if [ ! -e ${pidfile} ]; then
+                install -o ${openvpn_exporter_user} -g ${openvpn_exporter_group} /dev/null ${pidfile};
+        fi
+        if [ ! -f "${openvpn_exporter_log_file}" ]; then
+                install -o ${openvpn_exporter_user} -g ${openvpn_exporter_group} -m 640 /dev/null ${openvpn_exporter_log_file};
+        fi
+}
+
+run_rc_command "$1"
